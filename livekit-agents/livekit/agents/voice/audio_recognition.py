@@ -770,6 +770,7 @@ class AudioRecognition:
                 extra={
                     "user state": self._session.user_state,
                     "agent state": self._session.agent_state,
+                    "backchannel_words": self._session.options.backchannel_words,
                 },
             )
             if self._session.options.backchannel_words and self._session.agent_state in {
