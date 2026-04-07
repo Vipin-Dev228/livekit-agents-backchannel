@@ -141,6 +141,8 @@ class AgentSessionOptions:
     tts_text_transforms: Sequence[TextTransforms] | None
     ivr_detection: bool
     aec_warmup_duration: float | None
+    backchannel_words: set[str] | None
+    backchannel_timeout_second: int
 
     @property
     def endpointing(self) -> EndpointingOptions:
@@ -244,6 +246,8 @@ class AgentSession(rtc.EventEmitter[EventTypes], Generic[Userdata_T]):
         allow_interruptions: NotGivenOr[bool] = NOT_GIVEN,
         resume_false_interruption: NotGivenOr[bool] = NOT_GIVEN,
         agent_false_interruption_timeout: NotGivenOr[float | None] = NOT_GIVEN,
+        backchannel_words: set | None = None,
+        backchannel_timeout_second: int = 2,
     ) -> None:
         """`AgentSession` is the LiveKit Agents runtime that glues together
         media streams, speech/LLM components, and tool orchestration into a
@@ -370,6 +374,8 @@ class AgentSession(rtc.EventEmitter[EventTypes], Generic[Userdata_T]):
             if is_given(use_tts_aligned_transcript)
             else None,
             aec_warmup_duration=aec_warmup_duration,
+            backchannel_words=backchannel_words,
+            backchannel_timeout_second=backchannel_timeout_second,
         )
         self._conn_options = conn_options or SessionConnectOptions()
         self._started = False

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from rapidfuzz import process, fuzz
+import re
+
 import asyncio
 import json
 import math
@@ -188,6 +191,9 @@ class AudioRecognition:
         self._closing = asyncio.Event()
 
         self._vad_speech_started: bool = False
+
+        self._is_backchannel: bool = False
+        self._is_stt_event_completed: bool = False
 
     def update_options(
         self,
@@ -676,7 +682,42 @@ class AudioRecognition:
             return self._audio_transcript + " " + self._audio_interim_transcript
         return self._audio_transcript
 
+    @staticmethod
+    def normalize(text: str) -> str:
+        text = text.strip().lower()
+        text = re.sub(r"[^\w\s]", "", text)
+        text = re.sub(r"\s+", " ", text)
+        return text
+
+    def is_backchannel(self, text: str, threshold: float = 80) -> bool:
+        normalized = AudioRecognition.normalize(text)
+
+        if normalized in self._session.options.backchannel_words:
+            return True
+
+        tokens = normalized.split()
+
+        if len(tokens) > 4:
+            return False
+
+        for token in tokens:
+            if token in self._session.options.backchannel_words:
+                continue
+
+            result = process.extractOne(
+                token,
+                self._session.options.backchannel_words,
+                scorer=fuzz.WRatio,
+                score_cutoff=threshold,
+            )
+            if result is None:
+                return False
+
+        return True
+
     async def _on_stt_event(self, ev: stt.SpeechEvent) -> None:
+        self._is_backchannel = False
+        self._is_stt_event_completed = False
         if (
             self._turn_detection_mode == "manual"
             and self._user_turn_committed
@@ -723,6 +764,23 @@ class AudioRecognition:
 
             if not transcript:
                 return
+
+            logger.debug(
+                "Current States: ",
+                extra={
+                    "user state": self._session.user_state,
+                    "agent state": self._session.agent_state,
+                },
+            )
+            if self._session.options.backchannel_words and self._session.agent_state in {
+                "speaking",
+                "thinking",
+            }:
+                if self.is_backchannel(transcript):
+                    logger.info(f"Skipping intruption, Text: {transcript}")
+                    self._is_backchannel = True
+                    self._is_stt_event_completed = True
+                    return
 
             self._hooks.on_final_transcript(
                 ev,

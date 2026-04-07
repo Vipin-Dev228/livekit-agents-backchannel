@@ -187,6 +187,8 @@ class AgentActivity(RecognitionHooks):
         # speeches that audio playout finished but not done because of tool calls
         self._background_speeches: set[SpeechHandle] = set()
 
+        self._on_vad_inference_done_start_time = None
+
     def _validate_turn_detection(
         self, turn_detection: TurnDetectionMode | None
     ) -> TurnDetectionMode | None:
@@ -1490,8 +1492,9 @@ class AgentActivity(RecognitionHooks):
                 )
 
             if use_pause and self._session.output.audio and self._session.output.audio.can_pause:
-                self._session.output.audio.pause()
-                self._session._update_agent_state("listening")
+                if not self._audio_recognition._is_backchannel:
+                    self._session.output.audio.pause()
+                    self._session._update_agent_state("listening")
                 if self._audio_recognition:
                     self._audio_recognition.on_end_of_agent_speech(
                         ignore_user_transcript_until=ignore_user_transcript_until or time.time()
@@ -1556,6 +1559,10 @@ class AgentActivity(RecognitionHooks):
             # schedule a resume timer when user stops speaking
             self._start_false_interruption_timer(timeout)
 
+    async def reset_backchannel_time_after(self, second: int = 3):
+        await asyncio.sleep(second)
+        self._on_vad_inference_done_start_time = None
+
     def on_vad_inference_done(self, ev: vad.VADEvent) -> None:
         if self._turn_detection in ("manual", "realtime_llm"):
             # ignore vad inference done event if turn_detection is manual or realtime_llm
@@ -1571,7 +1578,31 @@ class AgentActivity(RecognitionHooks):
             # 1. turn detection is not STT; or
             # 2. STT EOS hasn't been received yet; or
             # 3. VAD speech is still ongoing
-            self._interrupt_by_audio_activity()
+            if self._session._opts.backchannel_words is not None:
+                # if self._audio_recognition._is_stt_event_completed == True:
+                #     self._interrupt_by_audio_activity()
+
+                # wait for stt event completed max wating time 2 second
+                if not self._on_vad_inference_done_start_time:
+                    print("setting start time...")
+                    self._on_vad_inference_done_start_time = time.perf_counter()
+                    asyncio.create_task(
+                        self.reset_backchannel_time_after(
+                            second=self._session._opts.backchannel_timeout_second + 1
+                        )
+                    )
+
+                print(
+                    f"checking time out...{time.perf_counter() - self._on_vad_inference_done_start_time}"
+                )
+                if (
+                    time.perf_counter() - self._on_vad_inference_done_start_time
+                ) > self._session._opts.backchannel_timeout_second or (
+                    self._audio_recognition._is_stt_event_completed == True
+                ):
+                    print("Timeout stt waiting.....")
+                    self._on_vad_inference_done_start_time = None
+                    self._interrupt_by_audio_activity()
 
         if (
             ev.speaking
