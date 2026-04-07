@@ -1579,12 +1579,9 @@ class AgentActivity(RecognitionHooks):
             # 2. STT EOS hasn't been received yet; or
             # 3. VAD speech is still ongoing
             if self._session._opts.backchannel_words is not None:
-                # if self._audio_recognition._is_stt_event_completed == True:
-                #     self._interrupt_by_audio_activity()
-
-                # wait for stt event completed max wating time 2 second
+                # wait for stt event completed
                 if not self._on_vad_inference_done_start_time:
-                    print("setting start time...")
+                    logger.info("Init backchannel timeout timer...")
                     self._on_vad_inference_done_start_time = time.perf_counter()
                     asyncio.create_task(
                         self.reset_backchannel_time_after(
@@ -1592,17 +1589,19 @@ class AgentActivity(RecognitionHooks):
                         )
                     )
 
-                print(
-                    f"checking time out...{time.perf_counter() - self._on_vad_inference_done_start_time}"
+                logger.info(
+                    f"Checking time out...{time.perf_counter() - self._on_vad_inference_done_start_time}"
                 )
                 if (
                     time.perf_counter() - self._on_vad_inference_done_start_time
                 ) > self._session._opts.backchannel_timeout_second or (
-                    self._audio_recognition._is_stt_event_completed == True
+                    self._audio_recognition._is_stt_event_completed
                 ):
-                    print("Timeout stt waiting.....")
+                    logger.info("Timeout backchanneling stt waiting.....")
                     self._on_vad_inference_done_start_time = None
                     self._interrupt_by_audio_activity()
+            else:
+                self._interrupt_by_audio_activity()
 
         if (
             ev.speaking

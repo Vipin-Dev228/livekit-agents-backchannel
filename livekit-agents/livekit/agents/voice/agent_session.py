@@ -71,6 +71,8 @@ from .turn import (
     _resolve_interruption,
 )
 
+DEFAULT_BACKCHANNEL_WORDS = {"hello", "test"}
+
 if TYPE_CHECKING:
     from ..inference import LLMModels, STTModels, TTSModels
     from ..llm import mcp
@@ -374,7 +376,9 @@ class AgentSession(rtc.EventEmitter[EventTypes], Generic[Userdata_T]):
             if is_given(use_tts_aligned_transcript)
             else None,
             aec_warmup_duration=aec_warmup_duration,
-            backchannel_words=backchannel_words,
+            backchannel_words=backchannel_words
+            if backchannel_words is not None
+            else DEFAULT_BACKCHANNEL_WORDS,
             backchannel_timeout_second=backchannel_timeout_second,
         )
         self._conn_options = conn_options or SessionConnectOptions()

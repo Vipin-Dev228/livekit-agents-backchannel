@@ -781,6 +781,11 @@ class AudioRecognition:
                     self._is_backchannel = True
                     self._is_stt_event_completed = True
                     return
+                else:
+                    logger.info(f"Not a backchannel, Text: {transcript}")
+                    self._is_stt_event_completed = True
+            else:
+                self._is_stt_event_completed = True
 
             self._hooks.on_final_transcript(
                 ev,
