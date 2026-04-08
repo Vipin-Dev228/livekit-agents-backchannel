@@ -843,6 +843,10 @@ class AudioRecognition:
                     extra={
                         "step": "external_condition",
                         "text": transcript,
+                        "states": {
+                            "user state": self._session.user_state,
+                            "agent state": self._session.agent_state,
+                        },
                         "backchannel_words": self._session.options.backchannel_words,
                     },
                 )
