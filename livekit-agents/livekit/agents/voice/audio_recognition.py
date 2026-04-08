@@ -702,11 +702,29 @@ class AudioRecognition:
         normalized = AudioRecognition.normalize(text)
 
         if normalized in self._session.options.backchannel_words:
+            logger.debug(
+                "is_backchannel",
+                extra={
+                    "step": "exact_match",
+                    "text": text,
+                    "threshold": threshold,
+                    "backchannel_words": self._session.options.backchannel_words,
+                },
+            )
             return True
 
         tokens = normalized.split()
 
         if len(tokens) > 4:
+            logger.debug(
+                "is_backchannel",
+                extra={
+                    "step": "too_many_tokens",
+                    "text": text,
+                    "threshold": threshold,
+                    "backchannel_words": self._session.options.backchannel_words,
+                },
+            )
             return False
 
         for token in tokens:
