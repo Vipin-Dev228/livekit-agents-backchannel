@@ -690,6 +690,15 @@ class AudioRecognition:
         return text
 
     def is_backchannel(self, text: str, threshold: float = 80) -> bool:
+        logger.debug(
+            "is_backchannel",
+            extra={
+                "step": "start",
+                "text": text,
+                "threshold": threshold,
+                "backchannel_words": self._session.options.backchannel_words,
+            },
+        )
         normalized = AudioRecognition.normalize(text)
 
         if normalized in self._session.options.backchannel_words:
@@ -711,8 +720,25 @@ class AudioRecognition:
                 score_cutoff=threshold,
             )
             if result is None:
+                logger.debug(
+                    "is_backchannel",
+                    extra={
+                        "step": "not_found",
+                        "text": text,
+                        "threshold": threshold,
+                        "backchannel_words": self._session.options.backchannel_words,
+                    },
+                )
                 return False
-
+        logger.debug(
+            "is_backchannel",
+            extra={
+                "step": "end",
+                "text": text,
+                "threshold": threshold,
+                "backchannel_words": self._session.options.backchannel_words,
+            },
+        )
         return True
 
     async def _on_stt_event(self, ev: stt.SpeechEvent) -> None:
@@ -777,6 +803,14 @@ class AudioRecognition:
                 "speaking",
                 "thinking",
             }:
+                logger.debug(
+                    "is_backchannel",
+                    extra={
+                        "step": "before_check",
+                        "text": transcript,
+                        "backchannel_words": self._session.options.backchannel_words,
+                    },
+                )
                 if self.is_backchannel(transcript):
                     logger.info(f"Skipping intruption, Text: {transcript}")
                     self._is_backchannel = True
@@ -786,6 +820,14 @@ class AudioRecognition:
                     logger.info(f"Not a backchannel, Text: {transcript}")
                     self._is_stt_event_completed = True
             else:
+                logger.debug(
+                    "is_backchannel",
+                    extra={
+                        "step": "external_condition",
+                        "text": transcript,
+                        "backchannel_words": self._session.options.backchannel_words,
+                    },
+                )
                 self._is_stt_event_completed = True
 
             self._hooks.on_final_transcript(
