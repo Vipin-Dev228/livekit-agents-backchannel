@@ -810,6 +810,18 @@ class AudioRecognition:
                 return
 
             logger.debug(
+                "Speech state at transcript: ",
+                extra={
+                    "current_speech": str(self._session.current_speech),
+                    "current_speech_done": self._session.current_speech.done()
+                    if self._session.current_speech
+                    else None,
+                    "speech_q_len": len(self._activity._speech_q)
+                    if hasattr(self._session, "_activity")
+                    else "N/A",
+                },
+            )
+            logger.debug(
                 "Current States: ",
                 extra={
                     "user state": self._session.user_state,
