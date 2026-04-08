@@ -808,16 +808,18 @@ class AudioRecognition:
 
             if not transcript:
                 return
-
+            current_speech_done = (
+                self._session.current_speech.done()
+                if self._session.current_speech
+                else None
+                if hasattr(self._session, "_activity")
+                else "N/A"
+            )
             logger.debug(
                 "Speech state at transcript: ",
                 extra={
                     "current_speech": str(self._session.current_speech),
-                    "current_speech_done": self._session.current_speech.done()
-                    if self._session.current_speech
-                    else None
-                    if hasattr(self._session, "_activity")
-                    else "N/A",
+                    "current_speech_done": current_speech_done,
                 },
             )
             logger.debug(
@@ -828,10 +830,14 @@ class AudioRecognition:
                     "backchannel_words": self._session.options.backchannel_words,
                 },
             )
-            if self._session.options.backchannel_words and self._session.agent_state in {
-                "speaking",
-                "thinking",
-            }:
+            if self._session.options.backchannel_words and (
+                self._session.agent_state
+                in {
+                    "speaking",
+                    "thinking",
+                }
+                or not current_speech_done
+            ):
                 logger.debug(
                     "is_backchannel",
                     extra={
