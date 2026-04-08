@@ -811,7 +811,7 @@ class AudioRecognition:
             current_speech_done = (
                 self._session.current_speech.done()
                 if self._session.current_speech
-                else None
+                else True
                 if hasattr(self._session, "_activity")
                 else "N/A"
             )
