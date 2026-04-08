@@ -815,8 +815,7 @@ class AudioRecognition:
                     "current_speech": str(self._session.current_speech),
                     "current_speech_done": self._session.current_speech.done()
                     if self._session.current_speech
-                    else None,
-                    "speech_q_len": len(self._activity._speech_q)
+                    else None
                     if hasattr(self._session, "_activity")
                     else "N/A",
                 },
