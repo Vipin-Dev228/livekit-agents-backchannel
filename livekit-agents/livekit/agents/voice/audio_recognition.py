@@ -995,7 +995,7 @@ class AudioRecognition:
             self._run_eou_detection(chat_ctx)
 
         elif ev.type == stt.SpeechEventType.START_OF_SPEECH and self._turn_detection_mode == "stt":
-            self._is_backchannel = False
+            self._is_backchannel = bool(self._session.options.backchannel_words)
             self._is_stt_event_completed = False
             with trace.use_span(self._ensure_user_turn_span()):
                 self._hooks.on_start_of_speech(None)
@@ -1011,7 +1011,7 @@ class AudioRecognition:
     @utils.log_exceptions(logger=logger)
     async def _on_vad_event(self, ev: vad.VADEvent) -> None:
         if ev.type == vad.VADEventType.START_OF_SPEECH:
-            self._is_backchannel = False
+            self._is_backchannel = bool(self._session.options.backchannel_words)
             self._is_stt_event_completed = False
             speech_start_time = time.time() - ev.speech_duration - ev.inference_duration
             if not self._vad_speech_started:
