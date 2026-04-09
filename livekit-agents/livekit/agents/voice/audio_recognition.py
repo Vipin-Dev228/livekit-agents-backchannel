@@ -214,7 +214,10 @@ class AudioRecognition:
             if self._turn_detection_mode != mode:
                 previous_mode = self._turn_detection_mode
                 self._turn_detection_mode = mode
-                self._vad_base_turn_detection = self._turn_detection_mode in ("vad", None)
+                self._vad_base_turn_detection = self._turn_detection_mode in (
+                    "vad",
+                    None,
+                )
 
                 if self._turn_detection_mode == "manual" or previous_mode == "manual":
                     if self._end_of_turn_task:
@@ -550,7 +553,9 @@ class AudioRecognition:
             self._interruption_ch = aio.Chan[inference.InterruptionDataFrameType]()
             self._interruption_atask = asyncio.create_task(
                 self._interruption_task(
-                    interruption_detection, self._interruption_ch, self._interruption_atask
+                    interruption_detection,
+                    self._interruption_ch,
+                    self._interruption_atask,
                 )
             )
             self._transcript_buffer.clear()
@@ -639,7 +644,8 @@ class AudioRecognition:
                         type=stt.SpeechEventType.FINAL_TRANSCRIPT,
                         alternatives=[
                             stt.SpeechData(
-                                language=LanguageCode(""), text=self._audio_interim_transcript
+                                language=LanguageCode(""),
+                                text=self._audio_interim_transcript,
                             )
                         ],
                     )
@@ -782,8 +788,6 @@ class AudioRecognition:
         return True
 
     async def _on_stt_event(self, ev: stt.SpeechEvent) -> None:
-        self._is_backchannel = False
-        self._is_stt_event_completed = False
         if (
             self._turn_detection_mode == "manual"
             and self._user_turn_committed
@@ -849,7 +853,10 @@ class AudioRecognition:
             if self._session.amd is not None:
                 self._session.amd._on_transcript(transcript)
 
-            extra: dict[str, Any] = {"user_transcript": transcript, "language": self._last_language}
+            extra: dict[str, Any] = {
+                "user_transcript": transcript,
+                "language": self._last_language,
+            }
             if self._last_speaking_time:
                 extra["transcript_delay"] = time.time() - self._last_speaking_time
             logger.debug("received user transcript", extra=extra)
@@ -944,6 +951,9 @@ class AudioRecognition:
             if transcript and self._is_transcript_backchannel(transcript):
                 self._is_backchannel = True
                 return
+            else:
+                self._is_stt_event_completed = True
+                self._is_backchannel = False
 
             self._hooks.on_interim_transcript(
                 ev,
@@ -978,6 +988,8 @@ class AudioRecognition:
             self._run_eou_detection(chat_ctx)
 
         elif ev.type == stt.SpeechEventType.START_OF_SPEECH and self._turn_detection_mode == "stt":
+            self._is_backchannel = False
+            self._is_stt_event_completed = False
             with trace.use_span(self._ensure_user_turn_span()):
                 self._hooks.on_start_of_speech(None)
 
@@ -1061,7 +1073,10 @@ class AudioRecognition:
             user_turn_span = self._ensure_user_turn_span()
             if turn_detector is not None:
                 if not await turn_detector.supports_language(self._last_language):
-                    logger.info("Turn detector does not support language %s", self._last_language)
+                    logger.info(
+                        "Turn detector does not support language %s",
+                        self._last_language,
+                    )
                 else:
                     with (
                         trace.use_span(user_turn_span),

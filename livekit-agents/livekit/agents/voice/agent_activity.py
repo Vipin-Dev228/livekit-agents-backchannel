@@ -1142,7 +1142,11 @@ class AgentActivity(RecognitionHooks):
             self._rt_session.clear_audio()
 
     def commit_user_turn(
-        self, *, transcript_timeout: float, stt_flush_duration: float, skip_reply: bool = False
+        self,
+        *,
+        transcript_timeout: float,
+        stt_flush_duration: float,
+        skip_reply: bool = False,
     ) -> asyncio.Future[str]:
         if self._rt_session is not None:
             # commit audio buffer and conditionally trigger response generation
@@ -1600,9 +1604,14 @@ class AgentActivity(RecognitionHooks):
                 ) > self._session._opts.backchannel_timeout_second or (
                     self._audio_recognition._is_stt_event_completed
                 ):
-                    logger.info("Timeout backchanneling stt waiting.....")
+                    logger.info("Timeout or STT completed backchanneling check.....")
                     self._on_vad_inference_done_start_time = None
-                    self._interrupt_by_audio_activity()
+
+                    # ONLY interrupt if it's NOT a backchannel
+                    if not self._audio_recognition._is_backchannel:
+                        self._interrupt_by_audio_activity()
+                    else:
+                        logger.info("Detected backchannel! Skipping agent pause/interruption.")
             else:
                 self._interrupt_by_audio_activity()
 
@@ -1948,7 +1957,8 @@ class AgentActivity(RecognitionHooks):
             metadata = Metadata(model_name="unknown", model_provider=self._turn_detection)
         elif self._turn_detection is not None:
             metadata = Metadata(
-                model_name=self._turn_detection.model, model_provider=self._turn_detection.provider
+                model_name=self._turn_detection.model,
+                model_provider=self._turn_detection.provider,
             )
 
         eou_metrics = EOUMetrics(
@@ -3322,7 +3332,9 @@ class AgentActivity(RecognitionHooks):
     def vad(self) -> vad.VAD | None:
         return self._agent.vad if is_given(self._agent.vad) else self._session.vad
 
-    def _resolve_interruption_detection(self) -> inference.AdaptiveInterruptionDetector | None:
+    def _resolve_interruption_detection(
+        self,
+    ) -> inference.AdaptiveInterruptionDetector | None:
         if not (
             self.stt is not None
             and self.stt.capabilities.aligned_transcript
