@@ -689,6 +689,28 @@ class AudioRecognition:
         text = re.sub(r"\s+", " ", text)
         return text
 
+    def _is_transcript_backchannel(self, transcript: str) -> bool:
+        if not self._session.options.backchannel_words:
+            return False
+
+        current_speech_done = (
+            self._session.current_speech.done()
+            if self._session.current_speech
+            else True
+            if hasattr(self._session, "_activity")
+            else "N/A"
+        )
+        if (
+            self._session.agent_state
+            in {
+                "speaking",
+                "thinking",
+            }
+            or not current_speech_done
+        ):
+            return self.is_backchannel(transcript)
+        return False
+
     def is_backchannel(self, text: str, threshold: float = 80) -> bool:
         logger.debug(
             "is_backchannel",
@@ -808,65 +830,14 @@ class AudioRecognition:
 
             if not transcript:
                 return
-            current_speech_done = (
-                self._session.current_speech.done()
-                if self._session.current_speech
-                else True
-                if hasattr(self._session, "_activity")
-                else "N/A"
-            )
-            logger.debug(
-                "Speech state at transcript: ",
-                extra={
-                    "current_speech": str(self._session.current_speech),
-                    "current_speech_done": current_speech_done,
-                },
-            )
-            logger.debug(
-                "Current States: ",
-                extra={
-                    "user state": self._session.user_state,
-                    "agent state": self._session.agent_state,
-                    "backchannel_words": self._session.options.backchannel_words,
-                },
-            )
-            if self._session.options.backchannel_words and (
-                self._session.agent_state
-                in {
-                    "speaking",
-                    "thinking",
-                }
-                or not current_speech_done
-            ):
-                logger.debug(
-                    "is_backchannel",
-                    extra={
-                        "step": "before_check",
-                        "text": transcript,
-                        "backchannel_words": self._session.options.backchannel_words,
-                    },
-                )
-                if self.is_backchannel(transcript):
-                    logger.info(f"Skipping intruption, Text: {transcript}")
-                    self._is_backchannel = True
-                    self._is_stt_event_completed = True
-                    return
-                else:
-                    logger.info(f"Not a backchannel, Text: {transcript}")
-                    self._is_stt_event_completed = True
+            if self._is_transcript_backchannel(transcript):
+                logger.info(f"Skipping intruption, Text: {transcript}")
+                self._is_backchannel = True
+                self._is_stt_event_completed = True
+                return
             else:
-                logger.debug(
-                    "is_backchannel",
-                    extra={
-                        "step": "external_condition",
-                        "text": transcript,
-                        "states": {
-                            "user state": self._session.user_state,
-                            "agent state": self._session.agent_state,
-                        },
-                        "backchannel_words": self._session.options.backchannel_words,
-                    },
-                )
+                if self._session.options.backchannel_words:
+                    logger.info(f"Not a backchannel, Text: {transcript}")
                 self._is_stt_event_completed = True
 
             self._hooks.on_final_transcript(
@@ -920,6 +891,11 @@ class AudioRecognition:
                     self._run_eou_detection(chat_ctx)
 
         elif ev.type == stt.SpeechEventType.PREFLIGHT_TRANSCRIPT:
+            transcript = ev.alternatives[0].text
+            if transcript and self._is_transcript_backchannel(transcript):
+                self._is_backchannel = True
+                return
+
             self._hooks.on_interim_transcript(
                 ev,
                 speaking=self._speaking
@@ -964,13 +940,18 @@ class AudioRecognition:
                 )
 
         elif ev.type == stt.SpeechEventType.INTERIM_TRANSCRIPT:
+            transcript = ev.alternatives[0].text
+            if transcript and self._is_transcript_backchannel(transcript):
+                self._is_backchannel = True
+                return
+
             self._hooks.on_interim_transcript(
                 ev,
                 speaking=self._speaking
                 if self._vad or self._turn_detection_mode == "stt"
                 else None,
             )
-            self._audio_interim_transcript = ev.alternatives[0].text
+            self._audio_interim_transcript = transcript
 
         elif ev.type == stt.SpeechEventType.END_OF_SPEECH and self._turn_detection_mode == "stt":
             with trace.use_span(self._ensure_user_turn_span()):

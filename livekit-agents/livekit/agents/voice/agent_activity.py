@@ -1438,6 +1438,9 @@ class AgentActivity(RecognitionHooks):
             ignore_user_transcript_until: The timestamp until which the user transcript should be ignored.
                 If None, the user transcript will be ignored until the current time.
         """
+        if self._audio_recognition and getattr(self._audio_recognition, "_is_backchannel", False):
+            return
+
         if not self._interruption_by_audio_activity_enabled:
             return
 
