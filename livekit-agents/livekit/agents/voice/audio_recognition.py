@@ -952,6 +952,13 @@ class AudioRecognition:
                 self._is_backchannel = True
                 return
             else:
+                if transcript and self._session.options.backchannel_words:
+                    norm = AudioRecognition.normalize(transcript)
+                    if norm and any(
+                        w.startswith(norm) for w in self._session.options.backchannel_words
+                    ):
+                        return
+
                 self._is_stt_event_completed = True
                 self._is_backchannel = False
 
@@ -1004,6 +1011,8 @@ class AudioRecognition:
     @utils.log_exceptions(logger=logger)
     async def _on_vad_event(self, ev: vad.VADEvent) -> None:
         if ev.type == vad.VADEventType.START_OF_SPEECH:
+            self._is_backchannel = False
+            self._is_stt_event_completed = False
             speech_start_time = time.time() - ev.speech_duration - ev.inference_duration
             if not self._vad_speech_started:
                 self._speech_start_time = speech_start_time
