@@ -71,7 +71,37 @@ from .turn import (
     _resolve_interruption,
 )
 
-DEFAULT_BACKCHANNEL_WORDS = {"hello", "test"}
+DEFAULT_BACKCHANNEL_WORDS = {
+    "hmm",
+    "mmmuh",
+    "uh",
+    "um",
+    "hello",
+    "okay",
+    "okMhm",
+    "yeah",
+    "uh-huh",
+    "right",
+    "got it",
+    "I see",
+    "I understand",
+    "I know",
+    "I got it",
+    "I hear you",
+    "I hear",
+    "I",
+    "yes",
+    "हाँ",
+    "हां",
+    "haan",
+    "ठीक",
+    "ठीक है",
+    "theek",
+    "theek hai",
+    "अच्छा",
+    "achha",
+    "हम्म",
+}
 
 if TYPE_CHECKING:
     from ..inference import LLMModels, STTModels, TTSModels
