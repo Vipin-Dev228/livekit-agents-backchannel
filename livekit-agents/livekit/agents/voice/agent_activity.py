@@ -1596,9 +1596,6 @@ class AgentActivity(RecognitionHooks):
                         )
                     )
 
-                logger.info(
-                    f"Checking time out...{time.perf_counter() - self._on_vad_inference_done_start_time}"
-                )
                 if (
                     time.perf_counter() - self._on_vad_inference_done_start_time
                 ) > self._session._opts.backchannel_timeout_second or (

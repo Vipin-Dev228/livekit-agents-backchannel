@@ -77,7 +77,7 @@ DEFAULT_BACKCHANNEL_WORDS = {
     "uh",
     "um",
     "hello",
-    "okay",
+    "ok",
     "okMhm",
     "yeah",
     "uh-huh",
@@ -175,6 +175,7 @@ class AgentSessionOptions:
     aec_warmup_duration: float | None
     backchannel_words: set[str] | None
     backchannel_timeout_second: int
+    backchannel_threshold: float
 
     @property
     def endpointing(self) -> EndpointingOptions:
@@ -280,6 +281,7 @@ class AgentSession(rtc.EventEmitter[EventTypes], Generic[Userdata_T]):
         agent_false_interruption_timeout: NotGivenOr[float | None] = NOT_GIVEN,
         backchannel_words: set | None = None,
         backchannel_timeout_second: int = 2,
+        backchannel_threshold: float = 80,
     ) -> None:
         """`AgentSession` is the LiveKit Agents runtime that glues together
         media streams, speech/LLM components, and tool orchestration into a
@@ -410,6 +412,7 @@ class AgentSession(rtc.EventEmitter[EventTypes], Generic[Userdata_T]):
             if backchannel_words is not None
             else DEFAULT_BACKCHANNEL_WORDS,
             backchannel_timeout_second=backchannel_timeout_second,
+            backchannel_threshold=backchannel_threshold,
         )
         self._conn_options = conn_options or SessionConnectOptions()
         self._started = False

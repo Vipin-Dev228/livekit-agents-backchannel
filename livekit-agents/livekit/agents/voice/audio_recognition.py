@@ -717,7 +717,8 @@ class AudioRecognition:
             return self.is_backchannel(transcript)
         return False
 
-    def is_backchannel(self, text: str, threshold: float = 80) -> bool:
+    def is_backchannel(self, text: str) -> bool:
+        threshold = self._session.options.backchannel_threshold
         logger.debug(
             "is_backchannel",
             extra={
