@@ -1596,6 +1596,15 @@ class AgentActivity(RecognitionHooks):
                         )
                     )
 
+                # logger.info(
+                #     f"Backchannel Timeout: {self._on_vad_inference_done_start_time} - {self._session._opts.backchannel_timeout_second}"
+                # )
+                # logger.info(
+                #     f"Is STT Event Completed: {self._audio_recognition._is_stt_event_completed}"
+                # )
+                # logger.info(
+                #     f"Backchannel Time: {(time.perf_counter() - self._on_vad_inference_done_start_time)}"
+                # )
                 if (
                     time.perf_counter() - self._on_vad_inference_done_start_time
                 ) > self._session._opts.backchannel_timeout_second or (
@@ -1604,8 +1613,13 @@ class AgentActivity(RecognitionHooks):
                     logger.info("Timeout or STT completed backchanneling check.....")
                     self._on_vad_inference_done_start_time = None
 
+                    if not self._audio_recognition._is_stt_event_completed:
+                        logger.info("STT event not completed , Reset backchannel flag....")
+                        self._audio_recognition._is_backchannel = False
+
                     # ONLY interrupt if it's NOT a backchannel
                     if not self._audio_recognition._is_backchannel:
+                        logger.info("Interrupting agent by audio activity.....")
                         self._interrupt_by_audio_activity()
                     else:
                         logger.info("Detected backchannel! Skipping agent pause/interruption.")
