@@ -1588,7 +1588,7 @@ class AgentActivity(RecognitionHooks):
             if self._session._opts.backchannel_words is not None:
                 # wait for stt event completed
                 if not self._on_vad_inference_done_start_time:
-                    logger.info("Init backchannel timeout timer...")
+                    # logger.info("Init backchannel timeout timer...")
                     self._on_vad_inference_done_start_time = time.perf_counter()
                     asyncio.create_task(
                         self.reset_backchannel_time_after(
@@ -1610,16 +1610,16 @@ class AgentActivity(RecognitionHooks):
                 ) > self._session._opts.backchannel_timeout_second or (
                     self._audio_recognition._is_stt_event_completed
                 ):
-                    logger.info("Timeout or STT completed backchanneling check.....")
+                    # logger.info("Timeout or STT completed backchanneling check.....")
                     self._on_vad_inference_done_start_time = None
 
                     if not self._audio_recognition._is_stt_event_completed:
-                        logger.info("STT event not completed , Reset backchannel flag....")
+                        # logger.info("STT event not completed , Reset backchannel flag....")
                         self._audio_recognition._is_backchannel = False
 
                     # ONLY interrupt if it's NOT a backchannel
                     if not self._audio_recognition._is_backchannel:
-                        logger.info("Interrupting agent by audio activity.....")
+                        # logger.info("Interrupting agent by audio activity.....")
                         self._interrupt_by_audio_activity()
                     else:
                         logger.info("Detected backchannel! Skipping agent pause/interruption.")
