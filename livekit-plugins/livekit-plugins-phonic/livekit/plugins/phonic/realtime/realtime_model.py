@@ -7,6 +7,7 @@ import os
 import time
 import typing
 import weakref
+from collections.abc import AsyncIterable
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -30,6 +31,7 @@ from phonic.types import (
     ConfigPayload,
     GenerateReplyPayload,
     InputTextPayload,
+    SayPayload,
     ToolCallInterruptedPayload,
     ToolCallOutputPayload,
     ToolCallPayload,
@@ -158,6 +160,7 @@ class RealtimeModel(llm.RealtimeModel):
                 audio_output=True,
                 manual_function_calls=False,
                 per_response_tool_choice=False,
+                supports_say=True,
             )
         )
 
@@ -408,6 +411,55 @@ class RealtimeSession(llm.RealtimeSession):
     def push_video(self, frame: rtc.VideoFrame) -> None:
         logger.warning("push_video is not supported by the Phonic realtime model.")
 
+    def say(
+        self,
+        text: str | AsyncIterable[str],
+    ) -> asyncio.Future[llm.GenerationCreatedEvent]:
+        if self._generate_reply_task and not self._generate_reply_task.done():
+            self._generate_reply_task.cancel()
+        self._generate_reply_task = asyncio.create_task(self._send_say(text), name="phonic-say")
+
+        self._close_current_generation(interrupted=False)
+
+        if self._pending_generate_reply_fut and not self._pending_generate_reply_fut.done():
+            self._pending_generate_reply_fut.cancel()
+
+        fut = asyncio.Future[llm.GenerationCreatedEvent]()
+        self._pending_generate_reply_fut = fut
+
+        def _on_timeout() -> None:
+            if not fut.done():
+                fut.set_exception(llm.RealtimeError("say() timed out."))
+
+        handle = asyncio.get_event_loop().call_later(10.0, _on_timeout)
+        fut.add_done_callback(lambda _: handle.cancel())
+        return fut
+
+    async def _send_say(
+        self,
+        text: str | AsyncIterable[str],
+        *,
+        allow_interruptions: NotGivenOr[bool] = NOT_GIVEN,
+    ) -> None:
+        await self._ready_to_start.wait()
+        if self._session_should_close.is_set():
+            return
+
+        if isinstance(text, str):
+            full_text = text
+        else:
+            chunks: list[str] = []
+            async for chunk in text:
+                chunks.append(chunk)
+            full_text = "".join(chunks)
+
+        if self._socket:
+            await self._socket.send_say(
+                SayPayload(
+                    text=full_text,
+                )
+            )
+
     def generate_reply(
         self,
         *,
@@ -422,12 +474,17 @@ class RealtimeSession(llm.RealtimeSession):
         )
         if self._generate_reply_task and not self._generate_reply_task.done():
             self._generate_reply_task.cancel()
-        self._generate_reply_task = asyncio.create_task(self._send_generate_reply(payload))
+        send_task = asyncio.create_task(self._send_generate_reply(payload))
+        self._generate_reply_task = send_task
 
         self._close_current_generation(interrupted=False)
 
         if self._pending_generate_reply_fut and not self._pending_generate_reply_fut.done():
-            self._pending_generate_reply_fut.cancel()
+            # clear the slot first so the done callback doesn't see this as an
+            # external cancellation of the currently-pending generation.
+            old_fut = self._pending_generate_reply_fut
+            self._pending_generate_reply_fut = None
+            old_fut.cancel()
 
         fut = asyncio.Future[llm.GenerationCreatedEvent]()
         self._pending_generate_reply_fut = fut
@@ -437,7 +494,18 @@ class RealtimeSession(llm.RealtimeSession):
                 fut.set_exception(llm.RealtimeError("generate_reply timed out."))
 
         handle = asyncio.get_event_loop().call_later(10.0, _on_timeout)
-        fut.add_done_callback(lambda _: handle.cancel())
+
+        def _on_fut_done(f: asyncio.Future[llm.GenerationCreatedEvent]) -> None:
+            handle.cancel()
+            is_current = self._pending_generate_reply_fut is fut
+            if is_current:
+                self._pending_generate_reply_fut = None
+            if f.cancelled() and is_current:
+                # external cancel: drop the queued send if it hasn't gone out yet
+                if not send_task.done():
+                    send_task.cancel()
+
+        fut.add_done_callback(_on_fut_done)
         return fut
 
     async def _send_generate_reply(self, payload: GenerateReplyPayload) -> None:
