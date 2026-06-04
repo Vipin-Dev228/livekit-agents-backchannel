@@ -858,41 +858,41 @@ class AudioRecognition:
 
     def is_backchannel(self, text: str) -> bool:
         threshold = self._session.options.backchannel_threshold
-        logger.debug(
-            "is_backchannel",
-            extra={
-                "step": "start",
-                "text": text,
-                "threshold": threshold,
-                "backchannel_words": self._session.options.backchannel_words,
-            },
-        )
+        # logger.debug(
+        #     "is_backchannel",
+        #     extra={
+        #         "step": "start",
+        #         "text": text,
+        #         "threshold": threshold,
+        #         "backchannel_words": self._session.options.backchannel_words,
+        #     },
+        # )
         normalized = AudioRecognition.normalize(text)
 
         if normalized in self._session.options.backchannel_words:
-            logger.debug(
-                "is_backchannel",
-                extra={
-                    "step": "exact_match",
-                    "text": text,
-                    "threshold": threshold,
-                    "backchannel_words": self._session.options.backchannel_words,
-                },
-            )
+            # logger.debug(
+            #     "is_backchannel",
+            #     extra={
+            #         "step": "exact_match",
+            #         "text": text,
+            #         "threshold": threshold,
+            #         "backchannel_words": self._session.options.backchannel_words,
+            #     },
+            # )
             return True
 
         tokens = normalized.split()
 
         if len(tokens) > 4:
-            logger.debug(
-                "is_backchannel",
-                extra={
-                    "step": "too_many_tokens",
-                    "text": text,
-                    "threshold": threshold,
-                    "backchannel_words": self._session.options.backchannel_words,
-                },
-            )
+            # logger.debug(
+            #     "is_backchannel",
+            #     extra={
+            #         "step": "too_many_tokens",
+            #         "text": text,
+            #         "threshold": threshold,
+            #         "backchannel_words": self._session.options.backchannel_words,
+            #     },
+            # )
             return False
 
         for token in tokens:
@@ -906,25 +906,25 @@ class AudioRecognition:
                 score_cutoff=threshold,
             )
             if result is None:
-                logger.debug(
-                    "is_backchannel",
-                    extra={
-                        "step": "not_found",
-                        "text": text,
-                        "threshold": threshold,
-                        "backchannel_words": self._session.options.backchannel_words,
-                    },
-                )
+                # logger.debug(
+                #     "is_backchannel",
+                #     extra={
+                #         "step": "not_found",
+                #         "text": text,
+                #         "threshold": threshold,
+                #         "backchannel_words": self._session.options.backchannel_words,
+                #     },
+                # )
                 return False
-        logger.debug(
-            "is_backchannel",
-            extra={
-                "step": "end",
-                "text": text,
-                "threshold": threshold,
-                "backchannel_words": self._session.options.backchannel_words,
-            },
-        )
+        # logger.debug(
+        #     "is_backchannel",
+        #     extra={
+        #         "step": "end",
+        #         "text": text,
+        #         "threshold": threshold,
+        #         "backchannel_words": self._session.options.backchannel_words,
+        #     },
+        # )
         return True
 
     async def _on_stt_event(self, ev: stt.SpeechEvent) -> None:
@@ -1002,7 +1002,7 @@ class AudioRecognition:
                 return
             else:
                 if self._session.options.backchannel_words:
-                    logger.info(f"Not a backchannel, Text: {transcript}")
+                    # logger.info(f"Not a backchannel, Text: {transcript}")
                 self._is_stt_event_completed = True
 
             self._hooks.on_final_transcript(
