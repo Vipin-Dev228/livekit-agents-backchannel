@@ -1001,8 +1001,9 @@ class AudioRecognition:
                 self._is_stt_event_completed = True
                 return
             else:
-                if self._session.options.backchannel_words:
-                    # logger.info(f"Not a backchannel, Text: {transcript}")
+                # if self._session.options.backchannel_words:
+                # logger.info(f"Not a backchannel, Text: {transcript}")
+
                 self._is_stt_event_completed = True
 
             self._hooks.on_final_transcript(
