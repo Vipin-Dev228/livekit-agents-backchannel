@@ -996,7 +996,9 @@ class AudioRecognition:
             if not transcript:
                 return
             if self._is_transcript_backchannel(transcript):
+                logger.info(f"Backchannel_words: {self._session.options.backchannel_words}")
                 logger.info(f"Skipping intruption, Text: {transcript}")
+                logger.info(f"Agent State: {self._session.agent_state}")
                 self._is_backchannel = True
                 self._is_stt_event_completed = True
                 return
